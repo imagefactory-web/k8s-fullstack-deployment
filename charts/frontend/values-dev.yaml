@@ -1,0 +1,26 @@
+# Development environment overrides for frontend
+#
+# replicaCount: 1 (single replica for dev)
+#
+image:
+   tag: dev (or use branch name for feature testing)
+#
+# ingress:
+   enabled: true
+   hosts:
+     - host: frontend-dev.example.com
+resources:
+   limits:
+     cpu: 200m (lower limits for dev)
+     memory: 256Mi
+   requests:
+     cpu: 100m
+     memory: 128Mi
+#
+# autoscaling:
+   enabled: false (disable HPA in dev)
+#
+env:
+   NODE_ENV: development
+   API_URL: https://api-dev.example.com
+   LOG_LEVEL: debug

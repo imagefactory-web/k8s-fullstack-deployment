@@ -1,0 +1,65 @@
+# ArgoCD Application for Staging Environment
+#
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: staging-apps
+  namespace: argocd
+#
+spec:
+   generators:
+     - list:
+         elements:
+           - app: frontend
+            namespace: frontend-staging
+             path: charts/frontend
+             values: values-staging.yaml
+           - app: backend
+            namespace: backend-staging
+             path: charts/backend
+             values: values-staging.yaml
+#
+  template:
+    metadata:
+      name: '{{app}}-staging'
+      labels:
+         environment: staging
+        app: '{{app}}'
+      annotations:
+         notifications.argoproj.io/subscribe.on-sync-succeeded.slack: staging-deployments
+#
+    spec:
+      project: platform
+       source:
+        repoURL: https://github.com/your-org/your-repo.git
+        targetRevision: staging
+        path: '{{path}}'
+         helm:
+          releaseName: '{{app}}-staging'
+           valueFiles:
+            - '{{values}}'
+           parameters:
+            - name: image.tag
+               value: $ARGOCD_APP_REVISION
+#
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+         syncOptions:
+           - CreateNamespace=true
+         retry:
+           limit: 5
+           backoff:
+            duration: 5s
+             factor: 2
+            maxDuration: 2m
+       # Ignore differences for auto-generated fields
+       ignoreDifferences:
+         - group: apps
+          kind: Deployment
+           jsonPointers:
+             - /spec/replicas

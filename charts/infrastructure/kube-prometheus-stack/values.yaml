@@ -1,0 +1,117 @@
+# Kube-Prometheus-Stack Values
+#
+# Purpose: Install complete monitoring stack (Prometheus, Grafana, Alertmanager)
+#
+# This chart installs:
+# - Prometheus Operator
+# - Prometheus server
+# - Grafana
+# - Alertmanager
+# - Node exporter
+# - Kube-state-metrics
+# - Pre-configured dashboards and alerts
+# Key configurations:
+# prometheus:
+   prometheusSpec:
+    retention: 30d
+     retentionSize: "50GB"
+     storageSpec:
+       volumeClaimTemplate:
+        spec:
+           storageClassName: gp3
+           accessModes: ["ReadWriteOnce"]
+          resources:
+             requests:
+               storage: 100Gi
+#
+    resources:
+       requests:
+         cpu: 500m
+         memory: 2Gi
+       limits:
+         cpu: 2000m
+         memory: 4Gi
+#
+     serviceMonitorSelectorNilUsesHelmValues: false
+     serviceMonitorSelector: {} (discover all ServiceMonitors)
+     podMonitorSelector: {}
+     additionalScrapeConfigs:
+      - job_name: 'kubernetes-pods'
+         kubernetes_sd_configs:
+           - role: pod
+# grafana:
+   enabled: true
+   adminPassword: (use secret)
+   ingress:
+     enabled: true
+     hosts:
+       - grafana.example.com
+    tls:
+       - secretName: grafana-tls
+         hosts:
+           - grafana.example.com
+   datasources:
+     datasources.yaml:
+      apiVersion: 1
+       datasources:
+        - name: Prometheus
+           type: prometheus
+           url: http://prometheus-operated:9090
+           isDefault: true
+#
+   dashboardProviders:
+     dashboardproviders.yaml:
+      apiVersion: 1
+       providers:
+        - name: 'default'
+           folder: 'General'
+           type: file
+           options:
+             path: /var/lib/grafana/dashboards/default
+#
+   dashboards:
+     default:
+       frontend-dashboard:
+         url: URL to frontend dashboard JSON
+       backend-dashboard:
+         url: URL to backend dashboard JSON
+       cluster-dashboard:
+         gnetId: 7249 (Kubernetes cluster monitoring)
+#
+# alertmanager:
+   config:
+     global:
+       resolve_timeout: 5m
+       slack_api_url: (use secret)
+#
+     route:
+       group_by: ['alertname', 'cluster', 'service']
+       group_wait: 10s
+       group_interval: 10s
+       repeat_interval: 12h
+       receiver: 'slack-notifications'
+       routes:
+         - match:
+             severity: critical
+           receiver: 'pagerduty'
+#
+     receivers:
+      - name: 'slack-notifications'
+         slack_configs:
+           - channel: '#alerts'
+             title: 'Alert'
+#
+      - name: 'pagerduty'
+         pagerduty_configs:
+           - service_key: (use secret)
+# nodeExporter:
+   enabled: true
+#
+# kubeStateMetrics:
+   enabled: true
+#
+# prometheusOperator:
+  resources:
+     limits:
+       cpu: 200m
+       memory: 200Mi

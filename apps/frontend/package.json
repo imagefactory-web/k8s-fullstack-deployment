@@ -1,0 +1,24 @@
+{
+  "//": "React frontend application package.json",
+  "//name": "Name of the frontend application",
+  "//version": "Application version (semantic versioning)",
+  "//description": "React-based frontend for the EKS blueprint application",
+  "//scripts": {
+    "//start": "Start development server",
+    "//build": "Build production-ready bundle",
+    "//test": "Run unit tests with Jest",
+    "//lint": "Run ESLint for code quality checks"
+  },
+  "//dependencies": {
+    "//react": "React library for building UI components",
+    "//react-dom": "React DOM for rendering",
+    "//react-router-dom": "Client-side routing",
+    "//axios": "HTTP client for API calls"
+  },
+  "//devDependencies": {
+    "//typescript": "TypeScript for type safety",
+    "//eslint": "Code linting",
+    "//jest": "Testing framework",
+    "//webpack": "Module bundler"
+  }
+}

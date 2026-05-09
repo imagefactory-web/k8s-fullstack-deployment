@@ -1,0 +1,59 @@
+# Production environment overrides for backend
+#
+# replicaCount: 3
+#
+image:
+  tag: prod-{{ .Values.buildNumber }}
+   pullPolicy: IfNotPresent
+#
+# serviceAccount:
+  annotations:
+     eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/backend-prod-role
+#
+# ingress:
+   enabled: true
+   className: alb
+  annotations:
+     alb.ingress.kubernetes.io/scheme: internet-facing
+     alb.ingress.kubernetes.io/target-type: ip
+     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
+     alb.ingress.kubernetes.io/healthcheck-path: /health
+   hosts:
+     - host: api.example.com
+  tls:
+     - secretName: backend-prod-tls
+       hosts:
+         - api.example.com
+resources:
+   limits:
+     cpu: 2000m
+     memory: 2Gi
+   requests:
+     cpu: 1000m
+     memory: 1Gi
+#
+# autoscaling:
+   enabled: true
+   minReplicas: 3
+   maxReplicas: 20
+   targetCPUUtilizationPercentage: 60
+   targetMemoryUtilizationPercentage: 70
+#
+# podDisruptionBudget:
+   enabled: true
+   minAvailable: 2
+#
+# affinity:
+   podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+       - weight: 100
+         podAffinityTerm:
+           topologyKey: topology.kubernetes.io/zone
+#
+env:
+   NODE_ENV: production
+   LOG_LEVEL: warn
+   DB_HOST: prod-postgres.rds.amazonaws.com
+   REDIS_HOST: prod-redis.cache.amazonaws.com
+   DB_POOL_MIN: "2"
+   DB_POOL_MAX: "10"

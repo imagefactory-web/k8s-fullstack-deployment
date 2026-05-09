@@ -1,0 +1,80 @@
+# ArgoCD Application for Development Environment
+#
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: dev-apps
+  namespace: argocd
+#
+spec:
+   generators:
+     - list:
+         elements:
+           - app: frontend
+            namespace: frontend-dev
+             path: charts/frontend
+             values: values-dev.yaml
+           - app: backend
+            namespace: backend-dev
+             path: charts/backend
+             values: values-dev.yaml
+#
+  template:
+    metadata:
+      name: '{{app}}-dev'
+      labels:
+         environment: dev
+        app: '{{app}}'
+    spec:
+      project: platform
+       source:
+        repoURL: https://github.com/your-org/your-repo.git
+        targetRevision: dev
+        path: '{{path}}'
+         helm:
+          releaseName: '{{app}}-dev'
+           valueFiles:
+            - '{{values}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+         syncOptions:
+           - CreateNamespace=true
+         retry:
+           limit: 3
+           backoff:
+            duration: 5s
+             factor: 2
+            maxDuration: 1m
+       # Health checks
+       health:
+         - group: argoproj.io
+          kind: Rollout
+Alternative: Individual Application resources
+# ---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend-dev
+  namespace: argocd
+#
+spec:
+  project: platform
+   source:
+    repoURL: https://github.com/your-org/your-repo.git
+    targetRevision: dev
+     path: charts/frontend
+     helm:
+       valueFiles:
+         - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: frontend-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

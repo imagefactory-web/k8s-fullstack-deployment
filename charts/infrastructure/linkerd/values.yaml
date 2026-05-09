@@ -1,0 +1,50 @@
+# Linkerd Service Mesh Values
+#
+# Purpose: Install and configure Linkerd service mesh for the cluster
+#
+# Installation approach:
+# - This is typically a values file that references the official Linkerd Helm chart
+# - Use as a dependency in Chart.yaml or apply separately
+# Key configurations:
+# linkerd-control-plane:
+   identityTrustAnchorsPEM: |
+     Trust anchor certificate for mTLS
+#
+   identity:
+     issuer:
+       scheme: kubernetes.io/tls (use cert-manager for cert rotation)
+#
+   proxy:
+    resources:
+       cpu:
+         request: 100m
+       memory:
+         request: 20Mi
+#
+   proxyInit:
+    resources:
+       cpu:
+         request: 10m
+       memory:
+         request: 10Mi
+#
+# linkerd-viz:
+   enabled: true (for observability dashboard)
+   dashboard:
+     enforcedHost: linkerd-viz.example.com
+#
+# linkerd-jaeger:
+   enabled: true (for distributed tracing)
+#
+# Features enabled:
+# - Automatic mTLS between services
+# - Traffic splitting for canary deployments
+# - Retries and timeouts
+# - Circuit breaking
+# - Observability (golden metrics)
+# - Distributed tracing
+Namespace injection:
+# - Annotate namespaces with linkerd.io/inject: enabled
+# - Pods automatically get Linkerd proxy sidecar
+# SMI TrafficSplit for canary:
+# - Use with Argo Rollouts for advanced deployments

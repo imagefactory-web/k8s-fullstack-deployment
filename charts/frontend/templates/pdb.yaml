@@ -1,0 +1,26 @@
+# Pod Disruption Budget
+#
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "frontend.fullname" . }}
+  labels: {{ include "frontend.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels: {{ include "frontend.selectorLabels" . | nindent 6 }}
+{{- end }}
+# Purpose:
+# - Ensure minimum number of pods remain available during disruptions
+# - Protect against voluntary disruptions (node drains, upgrades)
+# - Maintain application availability during cluster maintenance
+Configuration:
+# - Use minAvailable for production (e.g., 2 out of 3 pods)
+# - Or use maxUnavailable to limit concurrent disruptions
+# - Critical for multi-AZ high availability

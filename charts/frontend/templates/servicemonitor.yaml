@@ -1,0 +1,42 @@
+# ServiceMonitor for Prometheus Operator
+#
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "frontend.fullname" . }}
+  labels: {{ include "frontend.labels" . | nindent 4 }}
+  {{- with .Values.serviceMonitor.labels }}
+    {{ toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels: {{ include "frontend.selectorLabels" . | nindent 6 }}
+   endpoints:
+     - port: http
+      path: {{ .Values.serviceMonitor.path | default "/metrics" }}
+      interval: {{ .Values.serviceMonitor.interval | default "30s" }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout | default "10s" }}
+      {{- if .Values.serviceMonitor.metricRelabelings }}
+      metricRelabelings: {{ toYaml .Values.serviceMonitor.metricRelabelings | nindent 8 }}
+      {{- end }}
+      {{- if .Values.serviceMonitor.relabelings }}
+      relabelings: {{ toYaml .Values.serviceMonitor.relabelings | nindent 8 }}
+      {{- end }}
+   namespaceSelector:
+     matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}
+# Purpose:
+# - Configures Prometheus to scrape metrics from frontend pods
+# - Works with Prometheus Operator
+# - Enables monitoring and alerting
+# Metrics to expose:
+# - HTTP request duration/count
+# - Response status codes
+# - Active connections
+# - Custom business metrics
+# Notes:
+# - Application must expose /metrics endpoint
+# - Use nginx-prometheus-exporter for nginx metrics
+# - Label metrics appropriately for Grafana dashboards

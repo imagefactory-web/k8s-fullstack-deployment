@@ -1,0 +1,42 @@
+# Kubernetes Service Resources
+#
+Two services needed for Argo Rollouts blue-green strategy:
+#
+# 1. Active Service (production traffic)
+# ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "frontend.fullname" . }}-active
+  labels: Standard Helm labels with service type
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+       targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+     Match labels will be managed by Argo Rollouts
+#
+# 2. Preview Service (for testing new version)
+# ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "frontend.fullname" . }}-preview
+  labels: Standard Helm labels with preview type
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+       targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+     Match labels will be managed by Argo Rollouts
+#
+# Notes:
+# - Argo Rollouts automatically updates selector labels during rollout
+# - Active service receives production traffic via ingress
+# - Preview service allows testing before promotion

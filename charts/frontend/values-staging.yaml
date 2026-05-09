@@ -1,0 +1,32 @@
+# Staging environment overrides for frontend
+#
+# replicaCount: 2 (HA setup)
+#
+image:
+  tag: staging-{{ .Values.buildNumber }}
+# ingress:
+   enabled: true
+   hosts:
+     - host: frontend-staging.example.com
+  tls:
+     - secretName: frontend-staging-tls
+       hosts:
+         - frontend-staging.example.com
+resources:
+   limits:
+     cpu: 500m
+     memory: 512Mi
+   requests:
+     cpu: 250m
+     memory: 256Mi
+#
+# autoscaling:
+   enabled: true
+   minReplicas: 2
+   maxReplicas: 5
+   targetCPUUtilizationPercentage: 70
+#
+env:
+   NODE_ENV: staging
+   API_URL: https://api-staging.example.com
+   LOG_LEVEL: info

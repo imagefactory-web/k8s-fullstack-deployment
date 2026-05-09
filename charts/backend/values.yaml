@@ -1,0 +1,77 @@
+# Default values for backend Helm chart
+#
+# Similar structure to frontend with backend-specific configurations:
+#
+# replicaCount: 2
+#
+image:
+   repository: ECR repository URL for backend image
+   pullPolicy: IfNotPresent
+   tag: Override with app version
+#
+# serviceAccount:
+   create: true
+  annotations: {} (IRSA annotations for AWS access)
+  name: ""
+# service:
+   type: ClusterIP
+   port: 8080 (backend API port)
+   targetPort: 8080
+#
+# ingress:
+   enabled: true
+   className: nginx
+  annotations:
+     nginx.ingress.kubernetes.io/rate-limit: "100"
+   hosts:
+     - host: api.example.com
+       paths:
+         - path: /api
+           pathType: Prefix
+#
+resources:
+   limits:
+     cpu: 1000m
+     memory: 1Gi
+   requests:
+     cpu: 500m
+     memory: 512Mi
+#
+# autoscaling:
+   enabled: true
+   minReplicas: 2
+   maxReplicas: 10
+   targetCPUUtilizationPercentage: 70
+#
+env:
+   NODE_ENV: production
+   PORT: "8080"
+   DB_HOST: Database host
+   DB_PORT: "5432"
+   REDIS_HOST: Redis host
+#
+# envFrom:
+   - secretRef:
+      name: backend-secrets (DB credentials, API keys)
+# livenessProbe:
+   httpGet:
+     path: /health
+     port: http
+   initialDelaySeconds: 30
+   periodSeconds: 10
+#
+# readinessProbe:
+   httpGet:
+     path: /health
+     port: http
+   initialDelaySeconds: 5
+   periodSeconds: 5
+#
+# postgresql:
+   enabled: false (use external RDS)
+   auth:
+    username: backend
+     database: backend_db
+#
+# redis:
+   enabled: false (use external ElastiCache)

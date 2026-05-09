@@ -1,0 +1,82 @@
+# ArgoCD Application for Production Environment
+#
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: prod-apps
+  namespace: argocd
+#
+spec:
+   generators:
+     - list:
+         elements:
+           - app: frontend
+            namespace: frontend-prod
+             path: charts/frontend
+             values: values-prod.yaml
+           - app: backend
+            namespace: backend-prod
+             path: charts/backend
+             values: values-prod.yaml
+#
+  template:
+    metadata:
+      name: '{{app}}-prod'
+      labels:
+         environment: prod
+        app: '{{app}}'
+      annotations:
+         notifications.argoproj.io/subscribe.on-sync-running.slack: prod-deployments
+         notifications.argoproj.io/subscribe.on-sync-succeeded.slack: prod-deployments
+         notifications.argoproj.io/subscribe.on-sync-failed.slack: prod-alerts
+         notifications.argoproj.io/subscribe.on-health-degraded.pagerduty: prod-critical
+#
+    spec:
+      project: platform
+       source:
+        repoURL: https://github.com/your-org/your-repo.git
+        targetRevision: main (or production branch)
+        path: '{{path}}'
+         helm:
+          releaseName: '{{app}}-prod'
+           valueFiles:
+            - '{{values}}'
+           parameters:
+            - name: image.tag
+               value: $ARGOCD_APP_REVISION
+#
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: false (manual pruning for production)
+          selfHeal: false (manual healing for production)
+         syncOptions:
+           - CreateNamespace=true
+         retry:
+           limit: 2
+           backoff:
+            duration: 10s
+             factor: 2
+            maxDuration: 5m
+       # Sync waves for ordered deployment
+       syncWaves:
+         - wave: 0 (Deploy infrastructure first)
+         - wave: 10 (Deploy backend)
+         - wave: 20 (Deploy frontend)
+       # Ignore differences
+       ignoreDifferences:
+         - group: apps
+          kind: Deployment
+           jsonPointers:
+             - /spec/replicas (managed by HPA)
+         - group: argoproj.io
+          kind: Rollout
+           jsonPointers:
+             - /spec/replicas
+# Production requires manual sync approval:
+# - Configure sync policies carefully
+# - Use pre-sync hooks for smoke tests
+# - Use post-sync hooks for notifications
+# - Consider using sync windows to restrict deployment times

@@ -1,0 +1,32 @@
+{
+  "//": "Node.js Express backend API package.json",
+  "//name": "Name of the backend API service",
+  "//version": "Application version (semantic versioning)",
+  "//description": "Express-based REST API for the EKS blueprint application",
+  "//main": "Entry point file (e.g., src/server.js)",
+  "//scripts": {
+    "//start": "Start production server",
+    "//dev": "Start development server with hot reload (nodemon)",
+    "//test": "Run unit and integration tests",
+    "//lint": "Run ESLint for code quality",
+    "//migrate": "Run database migrations"
+  },
+  "//dependencies": {
+    "//express": "Web framework for Node.js",
+    "//cors": "Enable CORS for cross-origin requests",
+    "//helmet": "Security middleware for HTTP headers",
+    "//dotenv": "Load environment variables from .env file",
+    "//morgan": "HTTP request logger",
+    "//express-validator": "Request validation middleware",
+    "//pg": "PostgreSQL client (if using PostgreSQL)",
+    "//mongoose": "MongoDB ODM (if using MongoDB)",
+    "//jsonwebtoken": "JWT authentication",
+    "//bcrypt": "Password hashing"
+  },
+  "//devDependencies": {
+    "//nodemon": "Auto-restart server on file changes",
+    "//jest": "Testing framework",
+    "//supertest": "HTTP testing library",
+    "//eslint": "Code linting"
+  }
+}

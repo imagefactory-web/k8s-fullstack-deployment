@@ -1,0 +1,21 @@
+# Helm Chart Metadata for Frontend Application
+#
+apiVersion: Chart API version (v2 for Helm 3)
+name: Chart name (must match directory name)
+description: Brief description of what this chart deploys
+# type: Chart type (application or library)
+version: Chart version (incremented with each change)
+appVersion: Version of the application being deployed
+#
+# maintainers:
+  - name: Maintainer name
+     email: Contact email
+#
+# dependencies: List of chart dependencies (if any)
+  - name: Dependency chart name
+    version: Required version
+     repository: Chart repository URL
+#
+# keywords: List of keywords for discoverability
+# home: URL to project homepage
+# sources: List of URLs to source code

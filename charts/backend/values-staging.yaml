@@ -1,0 +1,32 @@
+# Staging environment overrides for backend
+#
+# replicaCount: 2
+#
+image:
+  tag: staging-{{ .Values.buildNumber }}
+# ingress:
+   enabled: true
+   hosts:
+     - host: api-staging.example.com
+  tls:
+     - secretName: backend-staging-tls
+       hosts:
+         - api-staging.example.com
+resources:
+   limits:
+     cpu: 1000m
+     memory: 1Gi
+   requests:
+     cpu: 500m
+     memory: 512Mi
+#
+# autoscaling:
+   enabled: true
+   minReplicas: 2
+   maxReplicas: 5
+#
+env:
+   NODE_ENV: staging
+   LOG_LEVEL: info
+   DB_HOST: staging-postgres.rds.amazonaws.com
+   REDIS_HOST: staging-redis.cache.amazonaws.com

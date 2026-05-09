@@ -1,0 +1,62 @@
+# ArgoCD AppProject for Platform Applications
+#
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+   finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Platform project for all application workloads
+   # Source repositories
+   sourceRepos:
+     - '*' (or restrict to specific Git repos)
+   # Destination clusters and namespaces
+   destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+    - namespace: frontend
+      server: https://kubernetes.default.svc
+    - namespace: backend
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+#
+  # Allowed cluster-scoped resources
+   clusterResourceWhitelist:
+     - group: ''
+      kind: Namespace
+     - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+     - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+  # Namespace-scoped resources (empty means all allowed)
+   namespaceResourceWhitelist:
+     - group: '*'
+      kind: '*'
+   # Roles for RBAC
+   roles:
+    - name: read-only
+      description: Read-only access to applications
+       policies:
+         - p, proj:platform:read-only, applications, get, platform/*, allow
+       groups:
+         - platform-viewers
+    - name: ci-role
+      description: Role for CI/CD to sync applications
+       policies:
+         - p, proj:platform:ci-role, applications, sync, platform/*, allow
+         - p, proj:platform:ci-role, applications, get, platform/*, allow
+   # Sync windows
+   syncWindows:
+    - kind: allow
+       schedule: '0 9-17 * * 1-5'
+      duration: 8h
+       applications:
+         - '*-dev'
+    - kind: deny
+       schedule: '0 0-6 * * *'
+      duration: 6h
+       applications:
+         - '*-prod'

@@ -1,0 +1,27 @@
+# Helm Chart Metadata for Backend API
+#
+apiVersion: Chart API version (v2 for Helm 3)
+name: Chart name (backend)
+description: Express-based REST API backend service
+# type: application
+version: Chart version (incremented with each change)
+appVersion: Version of the backend application
+#
+# maintainers:
+  - name: Maintainer name
+     email: Contact email
+#
+# dependencies: May include dependencies like:
+  - name: postgresql (if using in-cluster DB)
+    version: ~12.x.x
+     repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+#
+  - name: redis (for caching/sessions)
+    version: ~17.x.x
+     repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+#
+# keywords: [backend, api, express, nodejs]
+# home: URL to project homepage
+# sources: List of URLs to source code
