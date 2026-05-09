@@ -42,7 +42,7 @@ module "networking" {
 module "eks_cluster" {
   source             = "../../modules/eks-cluster"
   cluster_name       = var.cluster_name
-  cluster_version    = "1.28"
+  cluster_version    = "1.33"
   vpc_id             = module.networking.vpc_id
   private_subnet_ids = module.networking.private_subnet_ids
   node_groups = {
