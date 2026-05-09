@@ -1,0 +1,89 @@
+# Reusable GitHub Actions Workflow: Package and Release Helm Chart
+#
+name: Helm Chart Release
+on:
+  workflow_call:
+    inputs:
+       chart_path:
+        description: 'Path to Helm chart'
+         required: true
+         type: string
+      chart_name:
+        description: 'Chart name'
+         required: true
+         type: string
+      chart_version:
+        description: 'Chart version (optional, auto-increment if not provided)'
+         required: false
+         type: string
+    outputs:
+      chart_version:
+        description: 'Published chart version'
+        value: ${{ jobs.release.outputs.chart_version }}
+jobs:
+   release:
+    runs-on: ubuntu-latest
+    outputs:
+      chart_version: ${{ steps.package.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+           fetch-depth: 0
+#
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.13.0'
+      - name: Lint Helm chart
+        run: |
+          helm lint ${{ inputs.chart_path }}
+      - name: Run Helm template dry-run
+        run: |
+          helm template ${{ inputs.chart_name }} ${{ inputs.chart_path }} \
+            --values ${{ inputs.chart_path }}/values.yaml \
+             --dry-run
+#
+      - name: Install helm-docs
+        run: |
+           cd /tmp
+           wget https://github.com/norwoodj/helm-docs/releases/download/v1.11.0/helm-docs_1.11.0_Linux_x86_64.tar.gz
+           tar -xvf helm-docs_1.11.0_Linux_x86_64.tar.gz
+           sudo mv helm-docs /usr/local/bin/
+#
+      - name: Generate chart documentation
+        run: |
+          helm-docs ${{ inputs.chart_path }}
+      - name: Package Helm chart
+         id: package
+        run: |
+          if [ -n "${{ inputs.chart_version }}" ]; then
+            helm package ${{ inputs.chart_path }} --version ${{ inputs.chart_version }}
+            echo "version=${{ inputs.chart_version }}" >> $GITHUB_OUTPUT
+           else
+            helm package ${{ inputs.chart_path }}
+            VERSION=$(helm show chart ${{ inputs.chart_path }} | grep '^version:' | awk '{print $2}')
+             echo "version=${VERSION}" >> $GITHUB_OUTPUT
+           fi
+#
+      - name: Upload chart artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: helm-chart-${{ inputs.chart_name }}
+           path: '*.tgz'
+#
+      - name: Push chart to registry (optional)
+         if: github.ref == 'refs/heads/main'
+        run: |
+           # Example: Push to ChartMuseum or OCI registry
+          # helm push ${{ inputs.chart_name }}-${{ steps.package.outputs.version }}.tgz oci://registry.example.com/charts
+           echo "Chart packaged successfully"
+#
+# Alternative: Use chart-releaser-action for GitHub Pages
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.5.0
+         if: github.ref == 'refs/heads/main'
+        with:
+           charts_dir: charts
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

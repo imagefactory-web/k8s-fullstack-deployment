@@ -1,0 +1,85 @@
+# Reusable GitHub Actions Workflow: GitOps Deployment (Update Image Tag)
+#
+name: GitOps Deploy
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        description: 'Application name'
+         required: true
+         type: string
+       environment:
+        description: 'Target environment (dev, staging, prod)'
+         required: true
+         type: string
+       image_tag:
+        description: 'New image tag to deploy'
+         required: true
+         type: string
+       values_file:
+        description: 'Values file to update'
+         required: true
+         type: string
+    secrets:
+       gh_token:
+        description: 'GitHub token with write access'
+         required: true
+#
+jobs:
+   update-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.gh_token }}
+           fetch-depth: 0
+#
+      - name: Configure Git
+        run: |
+           git config user.name "GitHub Actions"
+           git config user.email "actions@github.com"
+#
+      - name: Update image tag in values file
+        run: |
+          VALUES_PATH="charts/${{ inputs.app_name }}/${{ inputs.values_file }}"
+           # Update image tag using yq
+          yq eval '.image.tag = "${{ inputs.image_tag }}"' -i "$VALUES_PATH"
+           # Verify the change
+           echo "Updated values file:"
+           cat "$VALUES_PATH"
+#
+      - name: Commit and push changes
+        run: |
+          git add charts/${{ inputs.app_name }}/${{ inputs.values_file }}
+           if git diff --staged --quiet; then
+             echo "No changes to commit"
+             exit 0
+           fi
+#
+          git commit -m "Update ${{ inputs.app_name }} image tag to ${{ inputs.image_tag }} for ${{ inputs.environment }}"
+           git push origin main
+#
+      - name: Create deployment record
+        run: |
+           echo "Deployment triggered:"
+          echo "  App: ${{ inputs.app_name }}"
+          echo "  Environment: ${{ inputs.environment }}"
+          echo "  Image Tag: ${{ inputs.image_tag }}"
+           echo "  Commit: $(git rev-parse HEAD)"
+#
+      - name: Wait for ArgoCD sync (optional)
+        run: |
+           # Install ArgoCD CLI
+           curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+           chmod +x argocd
+           sudo mv argocd /usr/local/bin/
+#
+           # Login to ArgoCD (requires ARGOCD_SERVER and ARGOCD_AUTH_TOKEN env vars)
+          # argocd app sync ${{ inputs.app_name }}-${{ inputs.environment }}
+          # argocd app wait ${{ inputs.app_name }}-${{ inputs.environment }} --health
+      - name: Send notification
+         if: success()
+        run: |
+           echo "Deployment successful!"
+           # Add Slack/Teams notification here

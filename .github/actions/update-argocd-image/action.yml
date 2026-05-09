@@ -1,0 +1,94 @@
+Custom Composite Action: Update ArgoCD Image
+name: 'Update ArgoCD Image Tag'
+description: 'Update image tag in Helm values file for GitOps deployment'
+# author: 'Platform Team'
+inputs:
+  app-name:
+    description: 'Application name (frontend, backend)'
+     required: true
+   environment:
+    description: 'Target environment (dev, staging, prod)'
+     required: true
+   image-tag:
+    description: 'New image tag'
+     required: true
+   github-token:
+    description: 'GitHub token with write permissions'
+     required: true
+#
+outputs:
+   commit-sha:
+    description: 'Git commit SHA of the update'
+    value: ${{ steps.commit.outputs.sha }}
+# runs:
+   using: 'composite'
+  steps:
+    - name: Install yq
+       shell: bash
+      run: |
+         sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+         sudo chmod +x /usr/local/bin/yq
+#
+    - name: Determine values file
+       shell: bash
+       id: values-file
+      run: |
+        case "${{ inputs.environment }}" in
+           dev)
+             echo "file=values-dev.yaml" >> $GITHUB_OUTPUT
+             ;;
+           staging)
+             echo "file=values-staging.yaml" >> $GITHUB_OUTPUT
+             ;;
+           prod)
+             echo "file=values-prod.yaml" >> $GITHUB_OUTPUT
+             ;;
+           *)
+            echo "Unknown environment: ${{ inputs.environment }}"
+             exit 1
+             ;;
+         esac
+#
+    - name: Update image tag
+       shell: bash
+      run: |
+        VALUES_FILE="charts/${{ inputs.app-name }}/${{ steps.values-file.outputs.file }}"
+        echo "Updating $VALUES_FILE with tag ${{ inputs.image-tag }}"
+        yq eval '.image.tag = "${{ inputs.image-tag }}"' -i "$VALUES_FILE"
+         cat "$VALUES_FILE"
+#
+    - name: Configure Git
+       shell: bash
+      run: |
+         git config user.name "github-actions[bot]"
+         git config user.email "github-actions[bot]@users.noreply.github.com"
+    - name: Commit changes
+       id: commit
+       shell: bash
+      run: |
+        git add charts/${{ inputs.app-name }}/${{ steps.values-file.outputs.file }}
+         if git diff --staged --quiet; then
+           echo "No changes to commit"
+           echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+           exit 0
+         fi
+#
+        git commit -m "chore: update ${{ inputs.app-name }} image to ${{ inputs.image-tag }} for ${{ inputs.environment }}"
+         git push
+         echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+#
+    - name: Summary
+       shell: bash
+      run: |
+        echo "✅ Updated ${{ inputs.app-name }} image tag"
+        echo "Environment: ${{ inputs.environment }}"
+        echo "New tag: ${{ inputs.image-tag }}"
+        echo "Commit: ${{ steps.commit.outputs.sha }}"
+# Usage example:
+steps:
+  - uses: ./.github/actions/update-argocd-image
+    with:
+      app-name: frontend
+       environment: dev
+       image-tag: dev-abc1234
+      github-token: ${{ secrets.GITHUB_TOKEN }}

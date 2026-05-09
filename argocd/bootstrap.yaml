@@ -1,0 +1,29 @@
+---
+# Namespace for ArgoCD
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+---
+# Install ArgoCD
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-installer
+  namespace: argocd
+---
+# Use Kustomize to install ArgoCD
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+    name: argocd-manifests
+    namespace: argocd
+  path: ./manifests/install
+  prune: true
+  validation: client
