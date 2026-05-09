@@ -39,11 +39,13 @@ resource "aws_eks_cluster" "this" {
   ]
 }
 resource "aws_eks_node_group" "this" {
-  for_each        = var.node_groups
-  cluster_name    = aws_eks_cluster.this.name
-  node_group_name = each.key
-  node_role_arn   = aws_iam_role.node.arn
-  subnet_ids      = var.private_subnet_ids
+  for_each             = var.node_groups
+  cluster_name         = aws_eks_cluster.this.name
+  node_group_name      = each.key
+  node_role_arn        = aws_iam_role.node.arn
+  subnet_ids           = var.private_subnet_ids
+  vpc_security_group_ids = [aws_security_group.node.id]
+  
   scaling_config {
     desired_size = each.value.desired_size
     min_size     = each.value.min_size
@@ -66,7 +68,10 @@ resource "aws_eks_node_group" "this" {
     max_unavailable_percentage = 33
   }
   depends_on = [
-    aws_iam_role_policy_attachment.node_policy
+    aws_iam_role_policy_attachment.node_policy,
+    aws_iam_instance_profile.node,
+    aws_security_group_ingress.cluster_from_node,
+    aws_security_group_ingress.node_from_cluster
   ]
 }
 
@@ -94,10 +99,65 @@ resource "aws_iam_role" "node" {
   })
 }
 
+resource "aws_iam_instance_profile" "node" {
+  name = "${var.cluster_name}-eks-node-profile"
+  role = aws_iam_role.node.name
+}
+
 resource "aws_security_group" "cluster" {
   name        = "${var.cluster_name}-eks-cluster-sg"
   description = "EKS cluster security group"
   vpc_id      = var.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "node" {
+  name        = "${var.cluster_name}-eks-node-sg"
+  description = "EKS node security group"
+  vpc_id      = var.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group_ingress" "cluster_from_node" {
+  description       = "Allow inbound traffic from EKS nodes to cluster"
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  security_group_id = aws_security_group.cluster.id
+  source_security_group_id = aws_security_group.node.id
+}
+
+resource "aws_security_group_ingress" "node_from_cluster" {
+  description       = "Allow inbound traffic from cluster to EKS nodes"
+  type              = "ingress"
+  from_port         = 1025
+  to_port           = 65535
+  protocol          = "tcp"
+  security_group_id = aws_security_group.node.id
+  source_security_group_id = aws_security_group.cluster.id
+}
+
+resource "aws_security_group_ingress" "node_from_node" {
+  description       = "Allow node to node communication"
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "-1"
+  security_group_id = aws_security_group.node.id
+  source_security_group_id = aws_security_group.node.id
 }
 
 resource "aws_cloudwatch_log_group" "cluster" {
