@@ -2,7 +2,7 @@
 #
 # Purpose: Create development EKS cluster and supporting infrastructure
 #
-Provider configuration:
+#Provider configuration:
 terraform {
    required_version = ">= 1.0"
    required_providers {
@@ -12,11 +12,11 @@ terraform {
      }
    }
    backend "s3" {
-     bucket = "terraform-state-bucket"
+     bucket = "eks-arc-runner"
      key    = "dev/terraform.tfstate"
-     region = "us-east-1"
-     dynamodb_table = "terraform-lock"
-     encrypt = true
+     region = "ap-south-1"
+     use_lockfile   = true
+     encrypt        = true
    }
 # }
 provider "aws" {

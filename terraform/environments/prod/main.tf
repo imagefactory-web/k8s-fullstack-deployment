@@ -1,6 +1,6 @@
 # Terraform Configuration for Production Environment
 #
-Production-ready configuration with:
+P#roduction-ready configuration with:
 # - Multi-AZ setup (3 AZs)
 # - Larger instance types
 # - Multiple node groups
