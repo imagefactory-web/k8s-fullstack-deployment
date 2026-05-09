@@ -9,58 +9,133 @@
 # - Security groups
 # - CloudWatch log group for control plane logs
 resource "aws_eks_cluster" "this" {
-   name     = var.cluster_name
-   version  = var.cluster_version
+  name     = var.cluster_name
+  version  = var.cluster_version
   role_arn = aws_iam_role.cluster.arn
-   vpc_config {
-     subnet_ids              = var.private_subnet_ids
-     endpoint_private_access = var.cluster_endpoint_private_access
-     endpoint_public_access  = var.cluster_endpoint_public_access
-     public_access_cidrs     = var.cluster_endpoint_public_access_cidrs
+  vpc_config {
+    subnet_ids              = var.private_subnet_ids
+    endpoint_private_access = var.cluster_endpoint_private_access
+    endpoint_public_access  = var.cluster_endpoint_public_access
+    public_access_cidrs     = var.cluster_endpoint_public_access_cidrs
     security_group_ids      = [aws_security_group.cluster.id]
-   }
-   enabled_cluster_log_types = [
-     "api", "audit", "authenticator", "controllerManager", "scheduler"
-   ]
-   encryption_config {
-     provider {
-      key_arn = var.enable_cluster_encryption ? aws_kms_key.eks[0].arn : null
-     }
-    resources = ["secrets"]
-   }
-   depends_on = [
+  }
+  enabled_cluster_log_types = [
+    "api", "audit", "authenticator", "controllerManager", "scheduler"
+  ]
+
+  dynamic "encryption_config" {
+    for_each = var.enable_cluster_encryption ? [1] : []
+    content {
+      provider {
+        key_arn = aws_kms_key.eks[0].arn
+      }
+      resources = ["secrets"]
+    }
+  }
+
+  depends_on = [
     aws_iam_role_policy_attachment.cluster_policy,
     aws_cloudwatch_log_group.cluster
-   ]
-# }
+  ]
+}
 resource "aws_eks_node_group" "this" {
-   for_each = var.node_groups
+  for_each        = var.node_groups
   cluster_name    = aws_eks_cluster.this.name
-   node_group_name = each.key
+  node_group_name = each.key
   node_role_arn   = aws_iam_role.node.arn
-   subnet_ids      = var.private_subnet_ids
-   scaling_config {
-     desired_size = each.value.desired_size
-     min_size     = each.value.min_size
-     max_size     = each.value.max_size
-   }
-   instance_types = each.value.instance_types
-   capacity_type  = lookup(each.value, "capacity_type", "ON_DEMAND")
-   labels = lookup(each.value, "labels", {})
-   taints = lookup(each.value, "taints", [])
-   update_config {
-     max_unavailable_percentage = 33
-   }
-   depends_on = [
+  subnet_ids      = var.private_subnet_ids
+  scaling_config {
+    desired_size = each.value.desired_size
+    min_size     = each.value.min_size
+    max_size     = each.value.max_size
+  }
+  instance_types = each.value.instance_types
+  capacity_type  = lookup(each.value, "capacity_type", "ON_DEMAND")
+  labels         = lookup(each.value, "labels", {})
+
+  dynamic "taint" {
+    for_each = lookup(each.value, "taints", [])
+    content {
+      key    = taint.value.key
+      value  = taint.value.value
+      effect = taint.value.effect
+    }
+  }
+
+  update_config {
+    max_unavailable_percentage = 33
+  }
+  depends_on = [
     aws_iam_role_policy_attachment.node_policy
-   ]
-# }
+  ]
+}
+
+resource "aws_iam_role" "cluster" {
+  name = "${var.cluster_name}-eks-cluster-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "eks.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role" "node" {
+  name = "${var.cluster_name}-eks-node-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_security_group" "cluster" {
+  name        = "${var.cluster_name}-eks-cluster-sg"
+  description = "EKS cluster security group"
+  vpc_id      = var.vpc_id
+}
+
+resource "aws_cloudwatch_log_group" "cluster" {
+  name              = "/aws/eks/${var.cluster_name}"
+  retention_in_days = 30
+}
+
+resource "aws_kms_key" "eks" {
+  count       = var.enable_cluster_encryption ? 1 : 0
+  description = "KMS key for EKS secret encryption"
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_policy" {
+  role       = aws_iam_role.cluster.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "node_policy" {
+  role       = aws_iam_role.node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "node_cni_policy" {
+  role       = aws_iam_role.node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+resource "aws_iam_role_policy_attachment" "node_registry_policy" {
+  role       = aws_iam_role.node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
 # IAM roles and policies:
 # - Cluster role with AmazonEKSClusterPolicy
-- Node role with:
-   * AmazonEKSWorkerNodePolicy
-   * AmazonEKS_CNI_Policy
-   * AmazonEC2ContainerRegistryReadOnly
+# - Node role with:
+#   * AmazonEKSWorkerNodePolicy
+#   * AmazonEKS_CNI_Policy
+#   * AmazonEC2ContainerRegistryReadOnly
 #
 # Outputs:
 # - cluster_id
