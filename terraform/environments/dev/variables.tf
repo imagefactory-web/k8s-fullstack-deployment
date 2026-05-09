@@ -13,7 +13,7 @@ variable "environment" {
 variable "cluster_name" {
   description = "EKS cluster name"
   type        = string
-  default     = "eks-blueprint-dev"
+  default     = "eks-dev"
 }
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
