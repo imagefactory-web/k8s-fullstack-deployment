@@ -130,33 +130,33 @@ resource "aws_security_group" "node" {
   }
 }
 
-resource "aws_security_group_ingress" "cluster_from_node" {
-  description       = "Allow inbound traffic from EKS nodes to cluster"
-  type              = "ingress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  security_group_id = aws_security_group.cluster.id
+resource "aws_security_group_rule" "cluster_from_node" {
+  description              = "Allow inbound traffic from EKS nodes to cluster"
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.cluster.id
   source_security_group_id = aws_security_group.node.id
 }
 
-resource "aws_security_group_ingress" "node_from_cluster" {
-  description       = "Allow inbound traffic from cluster to EKS nodes"
-  type              = "ingress"
-  from_port         = 1025
-  to_port           = 65535
-  protocol          = "tcp"
-  security_group_id = aws_security_group.node.id
+resource "aws_security_group_rule" "node_from_cluster" {
+  description              = "Allow inbound traffic from cluster to EKS nodes"
+  type                     = "ingress"
+  from_port                = 1025
+  to_port                  = 65535
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.node.id
   source_security_group_id = aws_security_group.cluster.id
 }
 
-resource "aws_security_group_ingress" "node_from_node" {
-  description       = "Allow node to node communication"
-  type              = "ingress"
-  from_port         = 0
-  to_port           = 65535
-  protocol          = "-1"
-  security_group_id = aws_security_group.node.id
+resource "aws_security_group_rule" "node_from_node" {
+  description              = "Allow node to node communication"
+  type                     = "ingress"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "-1"
+  security_group_id        = aws_security_group.node.id
   source_security_group_id = aws_security_group.node.id
 }
 
